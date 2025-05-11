@@ -67,16 +67,13 @@ const handleDonationRequest = asyncHandler(async (req, res) => {
             
             <p><strong>Address</strong></p>
             <p>
-                INDIAN NATIONAL LEAGUE<br>
-                Registered Address: 7 B. R. Mehta Lane, Kasturba Gandhi Marg Cross,<br>
-                New Delhi Central Delhi DELHI 110001<br>
-                Operational Address: 7 B. R. Mehta Lane, Kasturba Gandhi Marg Cross,<br>
-                New Delhi Central Delhi DELHI 110001
+                Indian Secular Front (ISF)<br>
+                Furfura Sharif, Hooghly, West Bengal
             </p>
 
             <p><strong>Contact Information</strong><br>
-                Telephone No: 9532835303<br>
-                E-Mail ID: info@indiannationalleague.party
+                Telephone No: 8967330331<br>
+                E-Mail ID: info@isf.org
             </p>
         `;
 
