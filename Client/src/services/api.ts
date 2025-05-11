@@ -1,5 +1,7 @@
+import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
+// Types
 export interface Member {
   _id: string;
   memberId: string;
@@ -23,6 +25,19 @@ export interface Member {
   updatedAt: string;
 }
 
+export interface MemberFilters {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+  status?: string;
+  membershipType?: string;
+  state?: string;
+  district?: string;
+  parliamentConstituency?: string;
+}
+
 export interface CreateMemberPayload {
   fullname: string;
   email: string;
@@ -40,173 +55,160 @@ export interface CreateMemberPayload {
   photo?: File;
 }
 
-interface SingleResponse<T> {
-  statusCode: number;
-  data: T;
-  message: string;
-  success: boolean;
+interface LocationOptions {
+  states: string[];
+  districts: string[];
+  parliamentConstituencies: string[];
 }
 
-interface ListResponse<T> {
+interface ApiResponse<T> {
   statusCode: number;
-  data: {
-    total: number;
-    page: number;
-    limit: number;
-    data: T[];
+  data: string;
+  message: {
+    members?: T[];
+    data?: T;
+    pagination?: {
+      currentPage: number;
+      totalPages: number;
+      totalMembers: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+    locationOptions?: LocationOptions;
   };
-  message: string;
   success: boolean;
 }
 
-const handleResponse = async (response: Response) => {
-  const contentType = response.headers.get('content-type');
-  if (contentType && contentType.includes('application/json')) {
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || 'An error occurred');
-    }
-    return data;
-  } else {
-    const text = await response.text();
-    const errorMatch = text.match(/<pre>Error: (.+?)<br>/);
-    throw new Error(errorMatch ? errorMatch[1] : 'An error occurred');
-  }
-};
-
+// API Service
 export const memberService = {
-  getMembers: async (): Promise<ListResponse<Member>> => {
+  getMembers: async (filters: MemberFilters = {}): Promise<ApiResponse<Member>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/member`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+      const token = localStorage.getItem('accessToken');
+      const params = new URLSearchParams();
+      
+      // Add all filters to query params
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          params.append(key, value.toString());
         }
       });
-      return handleResponse(response);
+
+      const response = await axios.get(`${API_BASE_URL}/member?${params.toString()}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      return response.data;
     } catch (error) {
       console.error('Error fetching members:', error);
       throw error;
     }
   },
 
-  createMember: async (data: FormData): Promise<SingleResponse<Member>> => {
+  createMember: async (data: CreateMemberPayload): Promise<ApiResponse<Member>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/member/register`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-        body: data,
+      const token = localStorage.getItem('accessToken');
+      const formData = new FormData();
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
       });
-      return handleResponse(response);
+
+      const response = await axios.post(`${API_BASE_URL}/member`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
     } catch (error) {
       console.error('Error creating member:', error);
       throw error;
     }
   },
 
-  updateMember: async (id: string, data: FormData): Promise<SingleResponse<Member>> => {
+  updateMember: async (memberId: string, data: Partial<CreateMemberPayload>): Promise<ApiResponse<Member>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/member/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-        body: data,
+      const token = localStorage.getItem('accessToken');
+      const formData = new FormData();
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
       });
-      return handleResponse(response);
+
+      const response = await axios.put(`${API_BASE_URL}/member/${memberId}`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
     } catch (error) {
       console.error('Error updating member:', error);
       throw error;
     }
   },
 
-  deleteMember: async (id: string): Promise<SingleResponse<null>> => {
+  deleteMember: async (memberId: string): Promise<ApiResponse<null>> => {
     try {
-      const response = await fetch(`${API_BASE_URL}/member/${id}`, {
-        method: 'DELETE',
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.delete(`${API_BASE_URL}/member/${memberId}`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+          Authorization: `Bearer ${token}`,
         },
       });
-      return handleResponse(response);
+
+      return response.data;
     } catch (error) {
       console.error('Error deleting member:', error);
       throw error;
     }
   },
 
-  checkMembership: async (email: string, phone: string): Promise<SingleResponse<Member>> => {
-    const data = {
-      email: email,
-      phone: phone,
-    };
-  
+  checkMembership: async (email: string, phone: string): Promise<ApiResponse<string>> => {
     try {
-      const url = new URL(`${API_BASE_URL}/member/check-memberships`);
-  
-      const response = await fetch(url.toString(), {
-        method: 'POST', // Changed to POST
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json', // Ensure Content-Type is set for JSON body
-        },
-        body: JSON.stringify(data),
-      });
-  
-      return handleResponse(response);
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.post(
+        `${API_BASE_URL}/member/check-memberships`,
+        { email, phone },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      return response.data;
     } catch (error) {
       console.error('Error checking membership:', error);
       throw error;
     }
   },
-  
 
-  downloadIdCard: async (idCardUrl: string): Promise<void> => {
+  generateIdCard: async (memberId: string): Promise<ApiResponse<string>> => {
     try {
-      // Get the full URL from the backend
-      const fullUrl = idCardUrl.startsWith('http') ? idCardUrl : `${API_BASE_URL}${idCardUrl}`;
-      
-      const response = await fetch(fullUrl, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-        },
-      });
-      
-      if (!response.ok) {
-        return handleResponse(response);
-      }
+      const token = localStorage.getItem('accessToken');
+      const response = await axios.post(
+        `${API_BASE_URL}/member/generate-id-card/${memberId}`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = 'id-card.png';
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error downloading ID card:', error);
-      throw error;
-    }
-  },
-
-  generateIdCard: async (memberId: string): Promise<SingleResponse<string>> => {
-    try {
-      const response = await fetch(`${API_BASE_URL}/member/generate-id-card/${memberId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
-          'Accept': 'application/json',
-        },
-      });
-      return handleResponse(response);
+      return response.data;
     } catch (error) {
       console.error('Error generating ID card:', error);
       throw error;
     }
-  },
+  }
 };

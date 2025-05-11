@@ -42,7 +42,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
           if (response.data.data.user) {
             setUser(response.data.data.user);
-            // If new tokens were issued, update them in localStorage
             if (response.data.data.accessToken) {
               localStorage.setItem('accessToken', response.data.data.accessToken);
             }
@@ -50,7 +49,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               localStorage.setItem('refreshToken', response.data.data.refreshToken);
             }
           } else {
-            // If no user data is returned, clear the tokens and user state
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             setUser(null);

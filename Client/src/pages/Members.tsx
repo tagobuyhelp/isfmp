@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Printer } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Printer, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import MemberCard from '../components/MemberCard';
 import SearchFilter from '../components/SearchFilter';
 import AddMemberModal from '../components/AddMemberModal';
 import MemberEditModal from '../components/MemberEditModal';
 import PrintLayout from '../components/PrintLayout';
+import LoadingState from '../components/LoadingState';
+import ErrorState from '../components/ErrorState';
 import { memberService, Member, CreateMemberPayload } from '../services/api';
+import { debounce } from '../utils/debounce';
 
 const Members = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -13,7 +16,6 @@ const Members = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [locationFilter, setLocationFilter] = useState<{
-    country?: string;
     state?: string;
     district?: string;
     parliamentConstituency?: string;
@@ -26,26 +28,61 @@ const Members = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalMembers, setTotalMembers] = useState(0);
-  const [limit, setLimit] = useState(10);
+  const [limit] = useState(10);
+  const [sortField, setSortField] = useState('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
-  useEffect(() => {
-    fetchMembers();
-  }, [currentPage, limit]);
-
-  const fetchMembers = async () => {
+  const fetchMembers = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = await memberService.getMembers();
-      setMembers(response.message.data);
-      setTotalMembers(response.message.total);
-      setTotalPages(Math.ceil(response.message.total / limit));
+      const response = await memberService.getMembers({
+        page: currentPage,
+        limit,
+        search: searchTerm,
+        sort: sortField,
+        order: sortOrder,
+        status: statusFilter,
+        membershipType: typeFilter,
+        ...locationFilter
+      });
+      
+      const memberData = response?.message?.members ?? [];
+      const pagination = response?.message?.pagination;
+      
+      setMembers(memberData);
+      setTotalMembers(pagination?.totalMembers ?? 0);
+      setTotalPages(pagination?.totalPages ?? 1);
       setError(null);
     } catch (err) {
-      setError('Failed to fetch members');
       console.error('Error fetching members:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch members');
+      setMembers([]);
     } finally {
       setIsLoading(false);
     }
+  }, [currentPage, limit, searchTerm, sortField, sortOrder, statusFilter, typeFilter, locationFilter]);
+
+  useEffect(() => {
+    fetchMembers();
+  }, [fetchMembers]);
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-4 h-4" />;
+    }
+    return sortOrder === 'asc' ? 
+      <ArrowUp className="w-4 h-4" /> : 
+      <ArrowDown className="w-4 h-4" />;
   };
 
   const handleAddMember = async (data: CreateMemberPayload) => {
@@ -107,41 +144,30 @@ const Members = () => {
     setCurrentPage(page);
   };
 
-  const handleLimitChange = (newLimit: number) => {
-    setLimit(newLimit);
+  const debouncedSearch = debounce((value: string) => {
+    setSearchTerm(value);
     setCurrentPage(1);
-  };
-
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = member.fullname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         member.phone.includes(searchTerm) ||
-                         (member.memberId && member.memberId.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                         member.aadhaar.includes(searchTerm);
-    const matchesStatus = !statusFilter || member.membershipStatus === statusFilter;
-    const matchesType = !typeFilter || member.membershipType === typeFilter;
-    const matchesLocation = Object.entries(locationFilter).every(([key, value]) => {
-      if (!value) return true;
-      if (key === 'parliamentConstituency') {
-        return member.parliamentConstituency === value;
-      }
-      return member[key as keyof Member] === value;
-    });
-    
-    return matchesSearch && matchesStatus && matchesType && matchesLocation;
-  });
+  }, 300);
 
   if (isLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-screen text-red-600">
-        {error}
-      </div>
-    );
+    return <ErrorState message={error} onRetry={fetchMembers} />;
   }
+
+  const SortableHeader = ({ field, children }: { field: string, children: React.ReactNode }) => (
+    <th 
+      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center space-x-1">
+        <span>{children}</span>
+        <SortIcon field={field} />
+      </div>
+    </th>
+  );
 
   return (
     <>
@@ -168,7 +194,7 @@ const Members = () => {
 
         <div className="bg-white rounded-lg shadow-sm">
           <SearchFilter
-            onSearch={setSearchTerm}
+            onSearch={debouncedSearch}
             onFilterStatus={setStatusFilter}
             onFilterType={setTypeFilter}
             onFilterLocation={setLocationFilter}
@@ -178,18 +204,17 @@ const Members = () => {
             <table className="w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Member ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Aadhaar</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                  <SortableHeader field="fullname">Member</SortableHeader>
+                  <SortableHeader field="memberId">Member ID</SortableHeader>
+                  <SortableHeader field="aadhaar">Aadhaar</SortableHeader>
+                  <SortableHeader field="membershipStatus">Status</SortableHeader>
+                  <SortableHeader field="membershipType">Type</SortableHeader>
+                  <SortableHeader field="createdAt">Joined</SortableHeader>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredMembers.map((member) => (
+                {members.map((member) => (
                   <MemberCard 
                     key={member._id}
                     member={member}
@@ -199,42 +224,36 @@ const Members = () => {
                     onCheckMembership={handleCheckMembership}
                   />
                 ))}
+                {members.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
+                      No members found
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="px-4 py-3 border-t border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center space-x-4 mb-4 sm:mb-0">
-                <div className="text-sm text-gray-500">
-                  Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, totalMembers)} of {totalMembers} members
-                </div>
-                <select
-                  value={limit}
-                  onChange={(e) => handleLimitChange(Number(e.target.value))}
-                  className="border border-gray-300 rounded-lg px-2 py-1 text-sm"
-                >
-                  <option value={10}>10 per page</option>
-                  <option value={25}>25 per page</option>
-                  <option value={50}>50 per page</option>
-                  <option value={100}>100 per page</option>
-                </select>
+              <div className="text-sm text-gray-500 mb-4 sm:mb-0">
+                Showing {((currentPage - 1) * limit) + 1} to {Math.min(currentPage * limit, totalMembers)} of {totalMembers} members
               </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
-                >
-                  Next
-                </button>
+              <div className="flex justify-center space-x-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-1 border rounded-lg text-sm ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -258,7 +277,7 @@ const Members = () => {
 
       <div className="hidden print:block">
         <PrintLayout 
-          members={selectedMember ? [selectedMember] : filteredMembers} 
+          members={selectedMember ? [selectedMember] : members} 
           type={selectedMember ? 'single' : 'list'} 
         />
       </div>

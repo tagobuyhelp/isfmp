@@ -10,9 +10,19 @@ const generateUserId = () => {
     return `INL${randomNum}`
 }
 
+const generateMembershipId = (type) => {
+    if (type === 'general') {
+        return (Math.floor(Math.random() * 750000) + 250000).toString().padStart(6, '0');
+    } else if (type === 'active') {
+        return (Math.floor(Math.random() * 8999) + 1001).toString().padStart(6, '0');
+    }
+}
 
 
-export { generateTnxId, generateUserId }
+
+
+
+export { generateTnxId, generateUserId, generateMembershipId }
 
 
 

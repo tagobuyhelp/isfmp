@@ -1,9 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 
 const memberSchema = new Schema({
-    memberId: {
-        type: String,
-    },
     fullname: {
         type: String,
         required: true,
@@ -11,7 +8,6 @@ const memberSchema = new Schema({
     },
     phone: {
         type: String,
-        required: true,
         trim: true,
         validate: {
             validator: function(v) {
@@ -28,7 +24,9 @@ const memberSchema = new Schema({
                 return /^\d{12}$/.test(v);
             },
             message: props => `${props.value} is not a valid Aadhaar number!`
-        }
+        },
+        unique: true,
+        index: true,
     },
     email: {
         type: String,
@@ -76,19 +74,6 @@ const memberSchema = new Schema({
         required: true,
         trim: true,
     },
-    membershipStatus: {
-        type: String,
-        required: true,
-        trim: true,
-        default: "inactive",
-        enum: ['inactive', 'active', 'expired'],
-    },
-    membershipType: {
-        type: String,
-        required: true,
-        trim: true,
-        enum: ['general', 'active'],
-    },
     photo: {
         type: String,
         trim: true,
@@ -96,7 +81,13 @@ const memberSchema = new Schema({
     idCard: {
         type: String,
         trim: true,
-    }
+    },
+    type: {
+        type: String,
+        required: true,
+        trim: true,
+        enum: ['general', 'active'],
+    },
 }, { timestamps: true });
 
 export const Member = mongoose.model('Member', memberSchema);

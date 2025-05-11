@@ -3,7 +3,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { Transaction } from "../models/transaction.model.js";
-import { generateTnxId, generateUserId } from "../utils/generateId.js";
+import { generateTnxId, generateMembershipId } from "../utils/generateId.js";
 import { phonepePayment } from "../utils/phonepePayment.js";
 import { sendMail } from "../utils/sendMail.js"; // Import sendMail utility
 import { Member } from "../models/member.model.js";
@@ -11,45 +11,53 @@ import crypto from 'crypto';
 import axios from 'axios';
 import cron from 'node-cron';
 
-const createFees = asyncHandler(async (req, res) => {
-    const { amount, validity, email, mobileNumber , type} = req.body;
-    validity = validity * 12; // Convert months to years
 
-    const memberId = generateUserId();
 
-    // Validate input
-    if (amount === undefined || validity === undefined || email === undefined || mobileNumber === undefined) {
-        throw new ApiError(400, "amount, fee, email and validity are required");
+
+const createMembership = asyncHandler(async (req, res) => {
+    const { aadhaar } = req.body;
+
+    if (!aadhaar) {
+        throw new ApiError(400, "Aadhaar number is required");
     }
+    const member = await Member.findOne({ aadhaar });
 
-    const existingMembership = await Membership.findOne({ memberId });
+
+
+    const validityMonths = 36;
+
+    // Calculate expiry date
+    const expiryDate = new Date();
+    expiryDate.setFullYear(expiryDate.getFullYear() + validity);
+
+
+    const memberId = member._id;
+    const amount = 100; // Assuming 100 INR
+
+    const existingMembership = await Membership.findOne({ member: memberId });
     if (existingMembership && existingMembership.status === 'active') {
         throw new ApiError(400, "Membership active or fees already paid");
+    } else if (existingMembership && existingMembership.status === 'inactive') {
+        existingMembership.status = 'inactive';
+        existingMembership.expiryDate = expiryDate;
+        await existingMembership.save();
+    } else {
+        // Create a new membership
+        const membership = await Membership.create({
+            member: memberId,
+            membershipId: generateMembershipId(member.type),
+            fee: amount,
+            validity: validityMonths,
+            status: 'inactive',
+            expiryDate
+        });
     }
 
-    // Generate a transaction ID
+    // Generate a transaction ID & Get Mobile Number
     const transactionId = generateTnxId();
+    const mobileNumber = member.phone;
 
-    // Create the transaction
-    const transaction = await Transaction.create({
-        memberId,
-        transactionId,
-        transactionType: 'membershipFees',
-        paymentStatus: 'pending',
-        amount,
-    });
 
-    // Create the membership
-    const membership = await Membership.create({
-        memberId,
-        phone: mobileNumber,
-        email,
-        transaction: transaction._id,
-        type: type,
-        fee: amount,
-        validity,
-        status: 'inactive',
-    });
 
     const redirectUrl = process.env.MEMBERSHIP_PAYMENT_STATUS_URL;
 
@@ -74,7 +82,7 @@ const createFees = asyncHandler(async (req, res) => {
     }
 });
 
-const checkPaymentStatus = asyncHandler(async (req, res) => {
+const checkMemberPaymentStatus = asyncHandler(async (req, res) => {
     const merchantTransactionId = req.params.merchantTransactionId;
 
     if (!merchantTransactionId) {
@@ -261,7 +269,7 @@ const getMembershipDetails = asyncHandler(async (req, res) => {
 
 const listAllMemberships = asyncHandler(async (req, res) => {
     // Get query parameters for advanced functionality
-    const { page = 1, limit = 10, sort = 'createdAt', order = 'asc', status, memberId, fields } = req.query;
+    const { page = 1, limit = 100, sort = 'createdAt', order = 'asc', status, memberId, fields } = req.query;
 
     // Build filter object
     const filter = {};
@@ -412,8 +420,8 @@ const updateExistingMemberships = asyncHandler(async (req, res) => {
 
 
 export {
-    createFees,
-    checkPaymentStatus,
+    createMembership,
+    checkMemberPaymentStatus,
     renewMembership,
     cancelMembership,
     getMembershipDetails,

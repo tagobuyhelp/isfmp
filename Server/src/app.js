@@ -14,7 +14,7 @@ import path from 'path';
 //     '01/01/1980',
 //     'Regular',
 //     '01/01/2025',
-//     'A:/Development/indiannationalleague/Server/images/TARIK.jpg',
+//     'A:/Development/ISFMP/Server/images/TARIK.jpg',
 // );
 
 
@@ -25,7 +25,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-    origin: ['https://delightful-kulfi-d6734f.netlify.app', 'https://admin.indiannationalleague.party', 'http://localhost:5173', 'http://127.0.0.1:5500', 'https://indiannationalleague.party', 'https://delightful-kulfi-d6734f.netlify.app'], // Adjust origins as needed
+    origin: ['https://isfmp.tagobuy.site', 'http://localhost:5173', 'https://preview--isf-site.lovable.app'], // Adjust origins as needed
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
 }));
@@ -44,7 +44,7 @@ app.use(cookiesParser());
 
 
 app.get('/', (req, res) => {
-    res.send('Welcome Indian National League')
+    res.send('Welcome ISF Membership Portal')
 })
 
 

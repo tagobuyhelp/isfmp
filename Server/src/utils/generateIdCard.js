@@ -72,7 +72,7 @@ export const generateIdCard = async (name, id, dob, type, validUpto, memberPhoto
         ctx.textAlign = 'left';
         ctx.fillText('INL', 20, 60);
         ctx.font = '600 20px Arial, sans-serif';
-        ctx.fillText('INDIAN NATIONAL LEAGUE', 20, 85);
+        ctx.fillText('INDIAN SECULAR FRONT', 20, 85);
 
         ctx.fillStyle = '#333333';
         ctx.font = '500 30px Arial, sans-serif';
@@ -164,12 +164,12 @@ export const generateIdCard = async (name, id, dob, type, validUpto, memberPhoto
 
         // Footer
         ctx.font = '500 15px Arial, sans-serif';
-        ctx.fillText('Indian National League', 20, 550);
-        ctx.fillText('Telephone No: 9532835303', 20, 575);
+        ctx.fillText('Indian Secular Front', 20, 550);
+        ctx.fillText('Telephone No: 9000000000', 20, 575);
 
         ctx.fillStyle = '#006600';
         ctx.font = '900 45px Arial, sans-serif';
-        ctx.fillText('INL', 290, 550);
+        ctx.fillText('ISF', 290, 550);
         ctx.fillStyle = '#333333';
         ctx.font = '500 20px Arial, sans-serif';
         ctx.fillText('MEMBER', 290, 580);
@@ -180,7 +180,7 @@ export const generateIdCard = async (name, id, dob, type, validUpto, memberPhoto
         // Upload ID card to Cloudinary
         const result = await new Promise((resolve, reject) => {
             const uploadStream = cloudinary.uploader.upload_stream(
-                { folder: 'inl_id_cards' },
+                { folder: 'isf_id_cards' },
                 (error, result) => {
                     if (error) reject(error);
                     else resolve(result);
@@ -198,11 +198,11 @@ export const generateIdCard = async (name, id, dob, type, validUpto, memberPhoto
         // Send email with ID card
         await sendMail({
             to: member.email,
-            subject: 'Your INL Membership ID Card',
-            text: `Dear ${name},\n\nYour INL Membership ID Card is ready. You can download it from the following link:\n\n${idCardUrl}\n\nBest regards,\nINL Team`,
+            subject: 'Your ISF Membership ID Card',
+            text: `Dear ${name},\n\nYour ISF Membership ID Card is ready. You can download it from the following link:\n\n${idCardUrl}\n\nBest regards,\nISF Team`,
             attachments: [
                 {
-                    filename: `inl_member_id_card_${id}.png`,
+                    filename: `isf_member_id_card_${id}.png`,
                     path: idCardUrl
                 }
             ]

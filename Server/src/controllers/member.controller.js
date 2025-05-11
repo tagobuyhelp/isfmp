@@ -56,12 +56,14 @@ const verifyMember = asyncHandler(async (req, res) => {
     }
 });
 
+
+
 // 4. Register a New Member
 const registerMember = asyncHandler(async (req, res) => {
     const { email, ...memberData } = req.body;
 
-    // Check if a member with the same Aadhaar and phone number already exists
-    const existingMember = await Member.findOne({ aadhaar: memberData.aadhaar, phone: memberData.phone });
+    // Check if a member with the same Aadhaar number already exists
+    const existingMember = await Member.findOne({ aadhaar: memberData.aadhaar });
     if (existingMember) {
         throw new ApiError(409, "Member already exists. Use the update option.");
     }
@@ -112,11 +114,13 @@ const updateMember = asyncHandler(async (req, res) => {
 
     // Check if a new photo was uploaded
     if (req.file) {
+        console.log('member_photos', req.file);
         // Upload the new photo to Cloudinary
         const result = await cloudinary.uploader.upload(req.file.path, {
             folder: "member_photos",
         });
         photoUrl = result.secure_url;
+        console.log(result);
         updates.photo = photoUrl;
     }
     const updatedMember = await Member.findByIdAndUpdate(
@@ -267,14 +271,14 @@ const getAllMembers = asyncHandler(async (req, res) => {
 
 // 9. Check Member Membership Buying Status
 const checkMembership = asyncHandler(async (req, res) => {
-    const { email, phone } = req.body;
+    const { aadhaar } = req.body;
 
-    if (!email || !phone) {
-        throw new ApiError(400, "Email and phone are required.");
+    if (!aadhaar) {
+        throw new ApiError(400, "Aadhaar and phone are required.");
     }
 
     // Check if a membership record exists
-    const membership = await Membership.findOne({ email, phone });
+    const membership = await Membership.findOne({ aadhaar });
 
     if (!membership) {
         return res.status(404).json(new ApiResponse(404, "No membership found. Please purchase a membership.", null));
@@ -306,14 +310,8 @@ const checkMembership = asyncHandler(async (req, res) => {
                 await member.save();
             }
 
-            // Format the response
-            const updatedMember = {
-                ...member.toObject(),
-                photo: member.photo ? `${BASE_URL}/${member.photo}` : "",
-                idCard: member.idCard ? `${BASE_URL}/${member.idCard}` : "",
-            };
 
-            return res.status(200).json(new ApiResponse(200, "Membership is active.", { status: 'active', member: updatedMember }));
+            return res.status(200).json(new ApiResponse(200, "Membership is active.", { status: 'active', member}));
         
         default:
             throw new ApiError(500, "Unknown membership status.");
@@ -322,22 +320,22 @@ const checkMembership = asyncHandler(async (req, res) => {
 
 
 const checkMembership2 = asyncHandler(async (req, res) => {
-    const { email, phone } = req.body;
+    const { aadhaar } = req.body;
     console.log('checkMembership2 function called');
 
     // Validate input
     if (!email || !phone) {
-        return res.status(400).json({ success: false, message: "Please enter email or phone number" });
+        return res.status(400).json({ success: false, message: "Please enter aadhaar" });
     }
 
     // Find the membership by email and phone
-    const membership = await Membership.findOne({ email, phone });
+    const membership = await Membership.findOne({ aadhaar });
 
     if (!membership || membership.status === 'inactive') {
         return res.status(404).json({ success: false, message: "Membership not found - Pay your membership fee",  });
     }
 
-    const member = await Member.findOne({ email : membership.email, phone : membership.phone });
+    const member = await Member.findOne({ aadhaar });
 
 
         // Format the response
@@ -369,8 +367,8 @@ const memberIdCardGenerator = asyncHandler(async (req, res) => {
             throw new ApiError(404, "Member not found");
         }
 
-        // Fetch membership by email and phone
-        const membership = await Membership.findOne({ email: member.email, phone: member.phone });
+        // Fetch membership by member _id
+        const membership = await Membership.findOne({ member: member._id });
         if (!membership) {
             throw new ApiError(404, "Membership not found");
         }
@@ -406,9 +404,7 @@ const memberIdCardGenerator = asyncHandler(async (req, res) => {
                 throw new ApiError(500, "ID Card Generation Failed");
             }
 
-            // Update the member record with the new ID card path
-            member.idCard = `/images/idcards/inl_member_id_card_${memberId}.png`;
-            await member.save();
+
         
 
         // Send response

@@ -1,31 +1,18 @@
 import mongoose, { Schema } from "mongoose";
+import { generateMembershipId } from "../utils/generateId.js";
 
 const membershipSchema = new Schema({
-    memberId: {
-        type: String,
-        required: true,
-        trim: true,
-        index: true
-    },
-    email: {
-        type: String,
-        required: true,
-        trim: true,
-        index: true
-    },
-    phone: {
-        type: String,
-        trim: true,
-        index: true
-    },
-    transaction: {
+    member: {
         type: Schema.Types.ObjectId,
-        ref: 'Transaction',
-        required: true
+        ref: 'Member',
+        required: true,
+        index: true
     },
-    type: {
+    membershipId: {
         type: String,
         required: true,
+        trim: true,
+        index: true
     },
     fee: {
         type: Number,
@@ -67,13 +54,31 @@ const membershipSchema = new Schema({
     }
 }, { timestamps: true });
 
-// Pre-save hook to calculate expiryDate
-membershipSchema.pre('save', function(next) {
+
+
+
+// Pre-save hook to calculate expiryDate and generate memberId
+membershipSchema.pre('save', async function(next) {
     if (this.isNew || this.isModified('startDate') || this.isModified('validity')) {
         const expiryDate = new Date(this.startDate);
         expiryDate.setMonth(expiryDate.getMonth() + this.validity);
         this.expiryDate = expiryDate;
     }
+
+    if (this.isNew || !this.memberId) {
+        let newMemberId;
+        let isUnique = false;
+        while (!isUnique) {
+            newMemberId = generateMemberId(this.membershipType);
+            // Check if the generated memberId already exists
+            const existingMember = await this.constructor.findOne({ memberId: newMemberId });
+            if (!existingMember) {
+                isUnique = true;
+            }
+        }
+        this.memberId = newMemberId;
+    }
+
     next();
 });
 

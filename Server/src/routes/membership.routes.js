@@ -1,8 +1,8 @@
 import { Router } from 'express';
 
 import {
-    createFees,
-    checkPaymentStatus,
+    createMembership,
+    checkMemberPaymentStatus,
     renewMembership,
     cancelMembership,
     getMembershipDetails,
@@ -13,12 +13,12 @@ import {
 const router = Router();
 
 // Route to create membership fees
-router.route('/membership').post(createFees);
+router.route('/membership').post(createMembership);
 
 router.post("/update-existing", updateExistingMemberships);
 
 // Route to check payment status
-router.route('/membership/payment/status/:merchantTransactionId').post(checkPaymentStatus);
+router.route('/membership/payment/status/:merchantTransactionId').post(checkMemberPaymentStatus);
 
 // Route to renew membership
 router.route('/membership/renew').post(renewMembership);

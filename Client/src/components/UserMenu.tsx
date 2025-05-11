@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, ChevronDown } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 const UserMenu = () => {
   const { user, logout } = useAuth();
@@ -19,11 +20,20 @@ const UserMenu = () => {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
+    const logoutPromise = new Promise(async (resolve, reject) => {
+      try {
+        await logout();
+        resolve('Logged out successfully');
+      } catch (error) {
+        reject(error instanceof Error ? error.message : 'Logout failed');
+      }
+    });
+
+    toast.promise(logoutPromise, {
+      loading: 'Logging out...',
+      success: 'See you soon!',
+      error: 'Logout failed',
+    });
   };
 
   if (!user) return null;
@@ -32,15 +42,16 @@ const UserMenu = () => {
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center space-x-3 text-gray-300 hover:text-white w-full p-2 rounded-lg transition-colors hover:bg-indigo-700/50"
+        className="flex items-center space-x-3 text-gray-300 hover:text-white w-full p-2 rounded-lg transition-colors hover:bg-primary-700/50"
       >
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center shadow-lg">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-500 flex items-center justify-center shadow-lg">
           <User className="w-5 h-5 text-white" />
         </div>
         <div className="hidden md:block text-left flex-1">
           <div className="text-sm font-medium">{user.fullname}</div>
-          <div className="text-xs text-indigo-300">{user.email}</div>
+          <div className="text-xs text-primary-300">{user.email}</div>
         </div>
+        <ChevronDown className="w-4 h-4 text-primary-300" />
       </button>
 
       {isOpen && (

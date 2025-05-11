@@ -1,1 +1,1 @@
-export const DB_NAME = "INL"
+export const DB_NAME = "ISFMP"

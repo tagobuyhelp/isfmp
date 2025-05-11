@@ -37,7 +37,7 @@ const MembershipRow: React.FC<MembershipRowProps> = ({ membership }) => {
     let yearsLeft = Math.floor(daysLeft / 365);
     let monthsLeft = Math.floor((daysLeft % 365) / 30);
 
-    const validityText = `${membership.validity / 12 } years`;
+    const validityText = `${membership.validity / 12} years`;
 
     let timeLeftText = '';
     if (timeLeft > 0) {
@@ -189,9 +189,10 @@ const MembershipRow: React.FC<MembershipRowProps> = ({ membership }) => {
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="text-sm text-gray-900">{validityInfo.validityText}</div>
+        
       </td>
       <td className="px-6 py-4 whitespace-nowrap">
-        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full capitalize ${
+        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
           membership.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
         }`}>
           {membership.status}

@@ -14,7 +14,7 @@ const sendMail = async ({ to, subject, text = '', html = '', attachments = [] })
     console.log('Recipient: ', to);
     try {
         const mailOptions = {
-            from: `"Indian National League" <${process.env.EMAIL_USER}>`, // Sender name and address
+            from: `"ISF" <${process.env.EMAIL_USER}>`, // Sender name and address
             to,                            // Recipient(s)
             subject,                       // Subject line
             text,                          // Plain text body
