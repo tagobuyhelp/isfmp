@@ -25,7 +25,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-    origin: ['https://isfmp.tagobuy.site', 'http://localhost:5173', 'https://preview--isf-site.lovable.app'], // Adjust origins as needed
+    origin: ['https://isfmp.tagobuy.site', 'http://localhost:5173', 'https://portal.isfwb.org'], // Adjust origins as needed
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
 }));
