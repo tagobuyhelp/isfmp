@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Plus, Search, Download } from 'lucide-react';
 import UserRow from '../components/UserRow';
 import UserModal from '../components/UserModal';
@@ -11,7 +11,7 @@ interface User {
   updatedAt: { $date: string };
 }
 
-const API_BASE_URL = 'http://localhost:4055';
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:4444';
 
 const Users = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -5,42 +5,40 @@ import { ApiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { generateOTP } from "../utils/otpGenerator.js";
 import { sendMail } from "../utils/sendMail.js";
+import { sendSms } from "../utils/sendSms.js";
 import { Membership } from "../models/membership.model.js";
 import { generateIdCard } from "../utils/generateIdCard.js";
 import cloudinary from "../utils/cloudinaryConfig.js";
 
 const BASE_URL = process.env.BASE_URL || "http://localhost:4055";
 
-// 1. Generate OTP and Send to Email
-const generateAndSendOtp = asyncHandler(async (email) => {
+const generateAndSendOtp = asyncHandler(async (phone) => {
+    debugger;
     const otp = generateOTP();
-    await OtpCode.create({ email, otp });
-    await sendMail({
-        to: email,
-        subject: "Your OTP Code",
-        text: `Your OTP code is ${otp}. It is valid for 5 minutes.`,
-    });
+    await OtpCode.create({ phone, otp });
+    await sendSms({ to: phone, message: `Your OTP code is ${otp}. It is valid for 5 minutes.` });
 });
 
 // 2. Verify OTP
 const verifyOtp = asyncHandler(async (req, res) => {
-    const { email, otp } = req.body;
-    const otpRecord = await OtpCode.findOne({ email, otp });
+    debugger;
+    const { phone, otp } = req.body;
+    const otpRecord = await OtpCode.findOne({ phone, otp });
 
     if (!otpRecord) {
         throw new ApiError(400, "Invalid or expired OTP.");
     }
 
     // OTP is valid; remove it from the database
-    await OtpCode.deleteOne({ email, otp });
+    await OtpCode.deleteOne({ phone, otp });
 
     return res.status(200).json(new ApiResponse(200, "OTP verified successfully"));
 });
 
 // 3. Verify if Member Exists
 const verifyMember = asyncHandler(async (req, res) => {
+    debugger;
     const { aadhaar, phone, email } = req.body;
-    await generateAndSendOtp(email); // Generate OTP when verifying a member
 
     const member = await Member.findOne({ aadhaar, phone });
 
@@ -48,7 +46,7 @@ const verifyMember = asyncHandler(async (req, res) => {
 
     
     if (member) {
-        const message = "Member found. OTP has been sent to your email to resume registration.";
+        const message = "Member found. Proceed with OTP verification on the screen.";
         return res.status(200).json(new ApiResponse(200, message));
     } else {
         const message = "Member not found. Proceed with full registration after OTP verification.";
@@ -60,6 +58,7 @@ const verifyMember = asyncHandler(async (req, res) => {
 
 // 4. Register a New Member
 const registerMember = asyncHandler(async (req, res) => {
+    debugger;
     const { email, ...memberData } = req.body;
 
     // Check if a member with the same Aadhaar number already exists
@@ -93,7 +92,7 @@ const registerMember = asyncHandler(async (req, res) => {
     <p>If you have any questions or need assistance, feel free to contact our support team. We’re here to help!</p>
 
     <p>Warm regards,</p>
-    <p><strong>INDIAN NATIONAL LEAGUE</strong></p>
+    <p><strong>ISF</strong></p>
 
     `;
     await sendMail({
@@ -108,6 +107,7 @@ const registerMember = asyncHandler(async (req, res) => {
 
 // 5. Update Member Information
 const updateMember = asyncHandler(async (req, res) => {
+    debugger;
     const { id } = req.params;
     const updates = req.body; // Ensure 'updates' is extracted correctly
     let photoUrl = null;
@@ -137,6 +137,7 @@ const updateMember = asyncHandler(async (req, res) => {
 
 // 6. Delete Member
 const deleteMember = asyncHandler(async (req, res) => {
+    debugger;
     const { id } = req.params;
 
     const deletedMember = await Member.findByIdAndDelete(id);
@@ -146,6 +147,7 @@ const deleteMember = asyncHandler(async (req, res) => {
 });
 
 const getMemberByPhoneEmail = asyncHandler(async (req, res) => {
+    debugger;
     const { phone, email } = req.body;
 
     if (!phone || !email) {
@@ -165,6 +167,7 @@ const getMemberByPhoneEmail = asyncHandler(async (req, res) => {
 
 // 7. Get Member by ID
 const getMemberById = asyncHandler(async (req, res) => {
+    debugger;
     const { id } = req.params;
     console.log('id...',id);
     const member = await Member.findById(id);
@@ -181,6 +184,7 @@ const getMemberById = asyncHandler(async (req, res) => {
 
 
 const getAllMembers = asyncHandler(async (req, res) => {
+    debugger;
     const { 
         page = 1, 
         limit = 10, 
@@ -271,6 +275,7 @@ const getAllMembers = asyncHandler(async (req, res) => {
 
 // 9. Check Member Membership Buying Status
 const checkMembership = asyncHandler(async (req, res) => {
+    debugger;
     const { aadhaar } = req.body;
 
     if (!aadhaar) {
@@ -320,6 +325,7 @@ const checkMembership = asyncHandler(async (req, res) => {
 
 
 const checkMembership2 = asyncHandler(async (req, res) => {
+    debugger;
     const { aadhaar } = req.body;
     console.log('checkMembership2 function called');
 
@@ -358,6 +364,7 @@ const checkMembership2 = asyncHandler(async (req, res) => {
 
 // 10. Member Id Card Generator
 const memberIdCardGenerator = asyncHandler(async (req, res) => {
+    debugger;
     const { id } = req.params;
 
     try {

@@ -30,7 +30,6 @@ const memberSchema = new Schema({
     },
     email: {
         type: String,
-        required: true,
         trim: true,
         match: /.+\@.+\..+/,
     },

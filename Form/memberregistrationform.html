@@ -142,13 +142,29 @@
     </div>
 
     <script>
-        const API_HOST_URL = 'https://api.indiannationalleague.party';
+        const API_HOST_URL = 'http://localhost:4444';
         const VERIFY_MEMBER = '/member/verify';
         const VERIFY_OTP = '/member/verify-otp';
         const REGISTER_MEMBER = '/member/register';
         const CHECK_MEMBERSHIP = '/member/check-membership';
         const MEMBER = '/member/member-by-email-phone';
         const CREATE_MEMBERSHIP = '/membership';
+        const api = (p) => new URL(p, API_HOST_URL).toString();
+
+        const msg91Config = {
+            widgetId: "356c6c6c3268333035333436",
+            tokenAuth: "482671TDqWReFI7J693c10c7P1",
+            exposeMethods: true,
+            success: function () {},
+            failure: function () {}
+        };
+        (function(){
+            const s=document.createElement('script');
+            s.src="https://verify.msg91.com/otp-provider.js";
+            s.async=true;
+            s.onload=function(){ if (typeof window.initSendOTP==='function') { window.initSendOTP(msg91Config); } };
+            document.head.appendChild(s);
+        })();
 
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -188,7 +204,7 @@
 
             // Show loading spinner
             document.getElementById('loading-spinner').classList.remove('hidden');
-            fetch(`${API_HOST_URL}${VERIFY_MEMBER}`, {
+            fetch(api(VERIFY_MEMBER), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -206,134 +222,89 @@
 
                         // Show OTP verification form
                         document.getElementById('verify-otp').classList.remove('hidden');
-                        document.getElementById('verify-otp-form').addEventListener('submit', function (event) {
+                        if (window.sendOtp) { window.sendOtp('91'+phone); }
+                        document.getElementById('verify-otp-form').addEventListener('submit', async function (event) {
                             event.preventDefault();
                             const otp = document.getElementById('otp').value;
-
-                            // Show loading spinner
                             document.getElementById('loading-spinner').classList.remove('hidden');
-                            fetch(`${API_HOST_URL}${VERIFY_OTP}`, {
-                                method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify({ email, otp })
-                            })
-                                .then(response => response.json())
-                                .then(data => {
-
-                                    // Hide loading spinner
-                                    document.getElementById('loading-spinner').classList.add('hidden');
-
-
-                                    if (data.success === true) {
-                                        window.alert('OTP Verified!');
-                                        if (data.success) {
-                                            //Already Registered User
-                                            //Lest Check Membership Purchase or not
-                                            fetch(`${API_HOST_URL}${CHECK_MEMBERSHIP}`, {
-                                                method: 'POST',
-                                                headers: {
-                                                    'Content-Type': 'application/json'
-                                                },
-                                                body: JSON.stringify({ email, phone })
-                                            })
-                                                .then(response => response.json())
-                                                .then(data => {
-                                                    console.log(data);
-                                                    if (data) {
-                                                        if (data.success === true) {
-                                                            document.getElementById('verify-otp').classList.add('hidden');
-                                                            document.getElementById('check-member-status').classList.add('hidden');
-                                                            document.getElementById('membership-validation').classList.remove('hidden');
-                                                            console.log(data.updatedMember.idCard);
-                                                            document.getElementById('id-card-download-link').href = data.updatedMember.idCard;
-
-                                                        } else if (data.success === false) {
-                                                            window.alert('You have not completed the payment - Pay your Membership Fees!');
-                                                            document.getElementById('check-member-status').classList.add('hidden');
-                                                            document.getElementById('verify-otp').classList.add('hidden');
-                                                            document.getElementById('membership-fee').classList.remove('hidden');
-                                                            //Next - Show the Pay Now button - Call the Create Membership Api
-                                                            let fee = 0;
-                                                            let validity = 3;
-                                                            document.getElementById('pay-now').addEventListener('click', function () {
-                                                                //First find the already seleced membership type
-                                                                fetch(`${API_HOST_URL}${MEMBER}`, {
-                                                                    method: 'POST',
-                                                                    headers: {
-                                                                        'Content-Type': 'application/json'
-                                                                    },
-                                                                    body: JSON.stringify({ email, phone })
-                                                                })
-                                                                    .then(response => response.json())
-                                                                    .then(data => {
-                                                                        if (data.statusCode === 200) {
-                                                                            if (data.message.membershipType === 'general') {
-                                                                                fee = 20;
-                                                                            } else if (data.message.membershipType === 'active') {
-                                                                                fee = 100;
-                                                                            }
-
-
-                                                                            //Lest Call Create Membership API - Get Payment URL & Redirect Payment Page
-
-                                                                            fetch(`${API_HOST_URL}${CREATE_MEMBERSHIP}`, {
-                                                                                method: 'POST',
-                                                                                headers: {
-                                                                                    'Content-Type': 'application/json'
-                                                                                },
-                                                                                body: JSON.stringify({
-                                                                                    amount: fee,
-                                                                                    validity,
-                                                                                    email,
-                                                                                    mobileNumber: phone,
-                                                                                    type: data.message.membershipType
-                                                                                })
-                                                                            })
-                                                                                .then(response => response.json())
-                                                                                .then(data => {
-                                                                                    if (data && data.paymentLink) {
-                                                                                        // Redirect to the payment page
-                                                                                        window.location.href = data.paymentLink;
-                                                                                    } else {
-                                                                                        console.error('Payment link not received from the server.');
-                                                                                        alert('Failed to retrieve payment link. Please try again later.');
-                                                                                    }
-                                                                                })
-                                                                                .catch(error => {
-                                                                                    console.error('Error occurred while creating membership:', error);
-                                                                                    alert('An error occurred. Please try again later.');
-                                                                                });
-
-
-                                                                        }
-                                                                    })
-                                                                    .catch(error => console.error(error))
-
-
-                                                            })
-                                                        }
-                                                    }
-                                                })
-                                                .catch(error => console.error('Error:', error), window.alert(error))
-
-                                        } else if (data.success === false) {
-                                            //Lest New Member Registration Process
-                                            document.getElementById('check-member-status').classList.add('hidden');
-                                            document.getElementById('new-member-registration').classList.remove('hidden');
-
-
-                                        }
+                            try {
+                                const token = await new Promise((resolve, reject) => {
+                                    if (window.verifyOtp) {
+                                        window.verifyOtp(otp, function (vData) {
+                                            resolve(vData && (vData.accessToken || vData.token));
+                                        }, function (err) {
+                                            reject(err);
+                                        });
                                     } else {
-                                        window.alert('Invalid OTP. Please try again.');
+                                        reject(new Error('OTP widget not loaded'));
                                     }
-                                })
-                                .catch(error => {
-                                    // Hide loading spinner
-                                    document.getElementById('loading-spinner').classList.add('hidden');
-                                    console.error('Error:', error)
                                 });
+
+                                const resp = await fetch(api('/otp/msg91/verify-token'), {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ accessToken: token })
+                                });
+                                const data = await resp.json();
+                                document.getElementById('loading-spinner').classList.add('hidden');
+
+                                if (data.success === true) {
+                                    window.alert('OTP Verified!');
+                                    const checkResp = await fetch(api(CHECK_MEMBERSHIP), {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ email, phone })
+                                    });
+                                    const checkData = await checkResp.json();
+                                    if (checkData && checkData.success === true) {
+                                        document.getElementById('verify-otp').classList.add('hidden');
+                                        document.getElementById('check-member-status').classList.add('hidden');
+                                        document.getElementById('membership-validation').classList.remove('hidden');
+                                        document.getElementById('id-card-download-link').href = checkData.updatedMember.idCard;
+                                        document.querySelector('#verify-otp-form button[type="submit"]').disabled = true;
+                                    } else {
+                                        window.alert('You have not completed the payment - Pay your Membership Fees!');
+                                        document.getElementById('check-member-status').classList.add('hidden');
+                                        document.getElementById('verify-otp').classList.add('hidden');
+                                        document.getElementById('membership-fee').classList.remove('hidden');
+                                        let fee = 0;
+                                        let validity = 3;
+                                        document.getElementById('pay-now').addEventListener('click', async function () {
+                                            try {
+                                                const memberResp = await fetch(api(MEMBER), {
+                                                    method: 'POST',
+                                                    headers: { 'Content-Type': 'application/json' },
+                                                    body: JSON.stringify({ email, phone })
+                                                });
+                                                const memberData = await memberResp.json();
+                                                if (memberData.statusCode === 200) {
+                                                    fee = memberData.message.membershipType === 'general' ? 20 : 100;
+                                                    const payResp = await fetch(api(CREATE_MEMBERSHIP), {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({ amount: fee, validity, email, mobileNumber: phone, type: memberData.message.membershipType })
+                                                    });
+                                                    const payData = await payResp.json();
+                                                    if (payData && payData.paymentLink) {
+                                                        window.location.href = payData.paymentLink;
+                                                    } else {
+                                                        alert('Failed to retrieve payment link. Please try again later.');
+                                                    }
+                                                }
+                                            } catch (error) {
+                                                console.error('Error occurred while creating membership:', error);
+                                                alert('An error occurred. Please try again later.');
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    window.alert('Invalid OTP. Please try again.');
+                                }
+                            } catch (error) {
+                                document.getElementById('loading-spinner').classList.add('hidden');
+                                console.error('Error:', error);
+                                window.alert('OTP verification failed');
+                            }
                         });
                     } else {
                         document.getElementById('check-member-status').classList.add('hidden');
@@ -385,7 +356,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Generic function to fetch and populate location dropdowns
     function fetchLocations(locationType, selectElement, parentId) {
-        const url = `${API_HOST_URL}/${locationType}/${parentId}`;
+        const url = api(`/${locationType}/${parentId}`);
 
         document.getElementById('loading-spinner').classList.remove('hidden');
 
@@ -450,7 +421,7 @@ document.getElementById('registration-form').addEventListener('submit', function
     document.getElementById('loading-spinner').classList.remove('hidden');
 
     // Submit the form data
-    fetch(`${API_HOST_URL}${REGISTER_MEMBER}`, {
+    fetch(api(REGISTER_MEMBER), {
         method: 'POST',
         body: formData,
     })
@@ -481,7 +452,7 @@ document.getElementById('registration-form').addEventListener('submit', function
 
                             // Show loading spinner
                             document.getElementById('loading-spinner').classList.remove('hidden');
-                            fetch(`${API_HOST_URL}${MEMBER}`, {
+                            fetch(api(MEMBER), {
                                 method: 'POST',
                                 headers: {
                                     'Content-Type': 'application/json'
@@ -503,7 +474,7 @@ document.getElementById('registration-form').addEventListener('submit', function
                                         //Lest Call Create Membership API - Get Payment URL & Redirect Payment Page
                                         // Show loading spinner
                                         document.getElementById('loading-spinner').classList.remove('hidden');
-                                        fetch(`${API_HOST_URL}${CREATE_MEMBERSHIP}`, {
+                                        fetch(api(CREATE_MEMBERSHIP), {
                                             method: 'POST',
                                             headers: {
                                                 'Content-Type': 'application/json'

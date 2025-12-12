@@ -25,7 +25,7 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-    origin: ['https://isfmp.tagobuy.site', 'http://localhost:5173', 'https://portal.isfwb.org'], // Adjust origins as needed
+    origin: ['https://isfmp.tagobuy.site', 'http://localhost:8080', 'http://localhost:5173', 'https://portal.isfwb.org', 'https://isfwb.org', 'http://127.0.0.1:5501'], // Adjust origins as needed
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     credentials: true,
 }));
@@ -62,6 +62,7 @@ import districtRoutes from './routes/district.routes.js';
 import parliamentConstituencyRoutes from './routes/parliamentConstituency.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import statisticsRoutes from './routes/statistics.routes.js';
+import otpRoutes from './routes/otp.routes.js';
 
 
 //route diclaration
@@ -70,6 +71,7 @@ app.use(donationRouter);
 app.use(phonepeRoutes);
 app.use(membershipRoutes);
 app.use("/member", memberRoutes);
+app.use('/otp', otpRoutes);
 app.use(transactionRoutes);
 app.use(noticeRoutes);
 app.use(countryRoutes);
@@ -80,5 +82,18 @@ app.use(authRoutes)
 app.use('/statistics', statisticsRoutes);
 
 
+
+// 404 fallback in JSON
+app.use((req, res) => {
+    res.status(404).json({
+        statusCode: 404,
+        success: false,
+        message: 'Route not found',
+        path: req.originalUrl,
+    });
+});
+
+// Error handling middleware (must be after routes)
+app.use(errorMiddleware);
 
 export {app}

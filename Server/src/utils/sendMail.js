@@ -11,6 +11,7 @@ import transporter from '../mail/mail.connect.js';
  * @returns {Promise} - A promise that resolves if the email was sent successfully or rejects if there was an error.
  */
 const sendMail = async ({ to, subject, text = '', html = '', attachments = [] }) => {
+    debugger;
     console.log('Recipient: ', to);
     try {
         const mailOptions = {
